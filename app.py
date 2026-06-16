@@ -6,7 +6,6 @@ from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardR
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 import asyncio
 import threading
-import time
 
 # =============== غیرفعال کردن لاگ‌های اضافی ===============
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -118,7 +117,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return ConversationHandler.END
 
-# =============== تابع اجرای ربات ===============
+# =============== تابع اصلی اجرای ربات با حلقه رویداد صحیح ===============
 def run_bot():
     """اجرای ربات در یک حلقه رویداد جداگانه"""
     # یک حلقه رویداد جدید بساز
