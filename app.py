@@ -5,7 +5,6 @@ from flask import Flask
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 import threading
-import asyncio
 
 # =============== غیرفعال کردن لاگ‌های اضافی ===============
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -119,32 +118,31 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 # =============== اجرای ربات ===============
 def run_bot():
-    """اجرای ربات با روش ساده"""
-    # ایجاد یک event loop جدید
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    # ساخت اپلیکیشن
-    application = Application.builder().token(TOKEN).build()
-    
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            FULLNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_fullname)],
-            PHONE: [MessageHandler(filters.ALL, get_phone)],
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
-    
-    application.add_handler(conv_handler)
-    
-    print("\n" + "="*55)
-    print("🤖 ربات شارژ رندوم روشن شد!")
-    print("📡 منتظر ثبت‌نام کاربران هستم...")
-    print("="*55 + "\n")
-    
-    # اجرای ربات با polling
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    """اجرای ربات با روش ساده و پایدار"""
+    try:
+        # ساخت اپلیکیشن
+        application = Application.builder().token(TOKEN).build()
+        
+        conv_handler = ConversationHandler(
+            entry_points=[CommandHandler('start', start)],
+            states={
+                FULLNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_fullname)],
+                PHONE: [MessageHandler(filters.ALL, get_phone)],
+            },
+            fallbacks=[CommandHandler('cancel', cancel)],
+        )
+        
+        application.add_handler(conv_handler)
+        
+        print("\n" + "="*55)
+        print("🤖 ربات شارژ رندوم روشن شد!")
+        print("📡 منتظر ثبت‌نام کاربران هستم...")
+        print("="*55 + "\n")
+        
+        # اجرای ربات با polling
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except Exception as e:
+        print(f"❌ خطا در اجرای ربات: {e}")
 
 # =============== اجرای اصلی ===============
 if __name__ == "__main__":
@@ -153,6 +151,6 @@ if __name__ == "__main__":
     bot_thread.daemon = True
     bot_thread.start()
     
-    # اجرای فلاسک
+    # اجرای فلاسک با gunicorn (برای Render)
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
