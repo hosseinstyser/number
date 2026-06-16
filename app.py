@@ -4,8 +4,6 @@ import logging
 from flask import Flask
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
-import asyncio
-import threading
 
 # =============== غیرفعال کردن لاگ‌های اضافی ===============
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -117,14 +115,9 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return ConversationHandler.END
 
-# =============== تابع اصلی اجرای ربات با حلقه رویداد صحیح ===============
+# =============== تابع اجرای ربات ===============
 def run_bot():
-    """اجرای ربات در یک حلقه رویداد جداگانه"""
-    # یک حلقه رویداد جدید بساز
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    # ساخت اپلیکیشن
+    """اجرای ربات در main thread"""
     application = Application.builder().token(TOKEN).build()
     
     conv_handler = ConversationHandler(
@@ -143,15 +136,5 @@ def run_bot():
     print("📡 منتظر ثبت‌نام کاربران هستم...")
     print("="*55 + "\n")
     
-    # شروع به کار ربات (این تابع تا زمانی که متوقف نشود، اجرا می‌شود)
+    # این تابع تا زمانی که متوقف نشود، اجرا می‌شود
     application.run_polling(allowed_updates=Update.ALL_TYPES)
-
-# =============== اجرای اصلی ===============
-if __name__ == "__main__":
-    # ربات را در یک ترد جداگانه اجرا کن
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
-    
-    # فلاسک را اجرا کن
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
