@@ -4,8 +4,8 @@ import logging
 from flask import Flask
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
-import asyncio
 import threading
+import asyncio
 
 # =============== غیرفعال کردن لاگ‌های اضافی ===============
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -118,8 +118,13 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 # =============== اجرای ربات ===============
-async def run_bot():
-    """اجرای ربات"""
+def run_bot():
+    """اجرای ربات با روش ساده"""
+    # ایجاد یک event loop جدید
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    # ساخت اپلیکیشن
     application = Application.builder().token(TOKEN).build()
     
     conv_handler = ConversationHandler(
@@ -138,27 +143,13 @@ async def run_bot():
     print("📡 منتظر ثبت‌نام کاربران هستم...")
     print("="*55 + "\n")
     
-    # شروع ربات با polling
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling()
-    
-    # نگه داشتن ربات
-    try:
-        while True:
-            await asyncio.sleep(1)
-    except KeyboardInterrupt:
-        await application.updater.stop()
-        await application.stop()
-        await application.shutdown()
+    # اجرای ربات با polling
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 # =============== اجرای اصلی ===============
 if __name__ == "__main__":
     # اجرای ربات در یک ترد جداگانه
-    def start_bot_in_thread():
-        asyncio.run(run_bot())
-    
-    bot_thread = threading.Thread(target=start_bot_in_thread)
+    bot_thread = threading.Thread(target=run_bot)
     bot_thread.daemon = True
     bot_thread.start()
     
