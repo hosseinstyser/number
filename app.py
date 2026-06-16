@@ -4,6 +4,8 @@ import logging
 from flask import Flask
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
+import asyncio
+import threading
 
 # =============== غیرفعال کردن لاگ‌های اضافی ===============
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -16,7 +18,7 @@ if not TOKEN:
     raise ValueError("TELEGRAM_TOKEN environment variable not set!")
 
 # آیدی عددی خودت (ادمین)
-YOUR_ADMIN_ID = 7830578378  # با آیدی خودت جایگزین کن
+YOUR_ADMIN_ID = 123456789  # با آیدی خودت جایگزین کن
 
 # مراحل مکالمه
 FULLNAME, PHONE = range(2)
@@ -115,26 +117,43 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return ConversationHandler.END
 
-# =============== تابع اجرای ربات ===============
+# =============== تابع اجرای ربات (با مدیریت خطا) ===============
 def run_bot():
-    """اجرای ربات در main thread"""
-    application = Application.builder().token(TOKEN).build()
+    """اجرای ربات در یک thread جداگانه"""
+    try:
+        # یک حلقه رویداد جدید در این thread بساز
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        application = Application.builder().token(TOKEN).build()
+        
+        conv_handler = ConversationHandler(
+            entry_points=[CommandHandler('start', start)],
+            states={
+                FULLNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_fullname)],
+                PHONE: [MessageHandler(filters.ALL, get_phone)],
+            },
+            fallbacks=[CommandHandler('cancel', cancel)],
+        )
+        
+        application.add_handler(conv_handler)
+        
+        print("\n" + "="*55)
+        print("🤖 ربات شارژ رندوم روشن شد!")
+        print("📡 منتظر ثبت‌نام کاربران هستم...")
+        print("="*55 + "\n")
+        
+        # اجرای ربات
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except Exception as e:
+        print(f"❌ خطا در اجرای ربات: {e}")
+
+# =============== اجرای اصلی ===============
+if __name__ == "__main__":
+    # ربات را در یک ترد جداگانه اجرا کن
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
     
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            FULLNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_fullname)],
-            PHONE: [MessageHandler(filters.ALL, get_phone)],
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-    )
-    
-    application.add_handler(conv_handler)
-    
-    print("\n" + "="*55)
-    print("🤖 ربات شارژ رندوم روشن شد!")
-    print("📡 منتظر ثبت‌نام کاربران هستم...")
-    print("="*55 + "\n")
-    
-    # این تابع تا زمانی که متوقف نشود، اجرا می‌شود
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # فلاسک را با gunicorn اجرا کن (برای Render)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
